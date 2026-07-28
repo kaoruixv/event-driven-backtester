@@ -14,7 +14,4 @@ cache/*
 
 # Reports ARE committed by the scheduled workflow (that's the point),
 # but ignore stray local test output.
-reports/*.png
-reports/*.html
-reports/*.json
 !reports/.gitkeep
