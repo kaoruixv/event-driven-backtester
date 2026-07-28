@@ -1,0 +1,34 @@
+# Central configuration for the backtest run.
+# Overridden by env vars in CI where noted (never put secrets here).
+
+data:
+  provider: yfinance          # yfinance | polygon | alpaca
+  symbols: ["AAPL", "MSFT", "SPY"]
+  start: "2019-01-01"
+  end: null                   # null = today, resolved at run time
+
+portfolio:
+  initial_capital: 100000
+  position_size_pct: 0.10
+
+strategy:
+  name: sma_crossover
+  short_window: 20
+  long_window: 50
+
+execution:
+  commission_per_share: 0.005
+  min_commission: 1.0
+  base_spread_bps: 5.0
+  impact_coefficient: 0.10
+  max_participation_rate: 0.10
+  latency_mean_ms: 80
+  latency_std_ms: 30
+  carry_unfilled: true
+
+validation:
+  walk_forward_train_days: 252
+  walk_forward_test_days: 63
+
+reporting:
+  out_dir: "reports"

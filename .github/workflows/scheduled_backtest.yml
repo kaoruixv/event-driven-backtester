@@ -1,0 +1,92 @@
+name: Scheduled Backtest Refresh
+
+# Runs unattended: pulls fresh market data, re-runs the event-driven
+# backtest, regenerates the tearsheet, and commits the updated report back
+# to the repo (served via GitHub Pages from /reports). No human triggers
+# this in normal operation — that's the point.
+on:
+  schedule:
+    # 21:30 UTC, Mon-Fri — after US market close. Cron uses UTC always.
+    - cron: "30 21 * * 1-5"
+  workflow_dispatch: {}   # manual override button, for debugging only
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run backtest pipeline
+        id: run_backtest
+        env:
+          # Secrets are injected as env vars, never hardcoded or logged.
+          # yfinance needs no key; these are read only if config.yaml's
+          # data.provider is switched to polygon / alpaca.
+          POLYGON_API_KEY: ${{ secrets.POLYGON_API_KEY }}
+          ALPACA_API_KEY_ID: ${{ secrets.ALPACA_API_KEY_ID }}
+          ALPACA_API_SECRET_KEY: ${{ secrets.ALPACA_API_SECRET_KEY }}
+        run: python run_backtest.py --config config/config.yaml
+
+      - name: Commit updated reports + cache back to repo
+        if: success()
+        run: |
+          git config user.name "backtest-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add reports/ cache/
+          git diff --staged --quiet && echo "No changes to commit" || \
+            git commit -m "chore: automated backtest refresh $(date -u +'%Y-%m-%d')"
+          git push
+
+      - name: Alert on failure
+        if: failure()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          MESSAGE="Scheduled backtest run FAILED on $(date -u). Run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          echo "$MESSAGE"
+          if [ -n "$SLACK_WEBHOOK_URL" ]; then
+            curl -s -X POST -H 'Content-type: application/json' \
+              --data "{\"text\": \"$MESSAGE\"}" "$SLACK_WEBHOOK_URL"
+          fi
+          # Always also open/update a GitHub issue so failures are visible
+          # even if no webhook secret is configured.
+          gh issue list --label "backtest-failure" --state open --json number --jq '.[0].number' > /tmp/issue_num || true
+          if [ -s /tmp/issue_num ]; then
+            gh issue comment "$(cat /tmp/issue_num)" --body "$MESSAGE"
+          else
+            gh issue create --title "Scheduled backtest run failed" --label "backtest-failure" --body "$MESSAGE"
+          fi
+        shell: bash
+        continue-on-error: true
+
+  publish-pages:
+    needs: refresh
+    if: success()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Deploy reports/ to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./reports
+          keep_files: false

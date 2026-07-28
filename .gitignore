@@ -1,0 +1,20 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+*.egg-info/
+.DS_Store
+
+# Cached market data is regenerated on every run — keep the dir, not the files
+cache/*
+!cache/.gitkeep
+
+# Reports ARE committed by the scheduled workflow (that's the point),
+# but ignore stray local test output.
+reports/*.png
+reports/*.html
+reports/*.json
+!reports/.gitkeep
