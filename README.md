@@ -277,21 +277,6 @@ gap reported as both a dollar figure and a % of idealized P&L
 
 ---
 
-## Resume Description
-
-> **Event-Driven Backtesting Engine with Realistic Execution Cost Modeling**
-> Built a Python event-driven (not vectorized) backtester simulating
-> latency, bid-ask spread, square-root market impact, and participation-cap
-> partial fills; quantified execution cost drag by comparing realized P&L
-> against an idealized frictionless shadow portfolio. Automated the full
-> pipeline — data acquisition (with retry/backoff and caching), backtest
-> execution, and tearsheet regeneration — via a GitHub Actions cron
-> workflow with commit-back, GitHub Pages publishing, and failure alerting;
-> validated with walk-forward testing and a runtime look-ahead-bias
-> checker. Repo: `github.com/kaoruixv/event-driven-backtester`.
-
----
-
 ## Potential Upgrades
 
 - **Live paper-trading extension** — swap `SimulatedExecutionHandler` for
